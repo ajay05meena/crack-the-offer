@@ -16,15 +16,12 @@ record Pair<T>(T left, T right){}
 public class TwoSum {
 
     public static Optional<Pair<Integer>> find(int [] nums, int target){
-        Map<Integer, Integer> reminder = new HashMap<>();
+        Map<Integer, Integer> seen = new HashMap<>();
         for(int i= 0; i<nums.length;i++){
-            reminder.put(target-nums[i], i);
-        }
-
-        for(int i = 0; i<nums.length;i++){
-            if(reminder.containsKey(nums[i])){
-                return Optional.of(new Pair<Integer>(i, reminder.get(nums[i])));
+            if(seen.containsKey(target-nums[i])){
+                return Optional.of(new Pair<Integer>(seen.get(target-nums[i]), i));
             }
+            seen.put(nums[i], i);
         }
         return Optional.empty();
     }
