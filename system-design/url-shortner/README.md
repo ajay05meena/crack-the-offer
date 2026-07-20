@@ -4,9 +4,9 @@ Design Url shortener app
 
 ## Scope and Requirements
 
-* Expiration : assuming url will never expire
+* Expiration : assuming url will have expiry date — default TTL of 1 year from creation if the user doesn't set one, with an optional custom expiry at creation time
 * Skew load : traffic across URLs is skewed (a small number of URLs — e.g. a viral link — get most of the reads). This does NOT mean the platform's total QPS depends on per-URL uniformity; it means the *distribution* of that QPS across URLs is uneven, which is a caching/hot-key concern for the Scalability section, not a scope-math concern here.
-* Rate limiting : out of scope
+* Rate limiting : should be on write api.
 
 ## Functional requirements
 
@@ -35,17 +35,24 @@ Design Url shortener app
 ## API endpoints
 
 1. `POST /urls`
-   * Header: Auth token — open, deferred, not blocking the rest of the design
+   * Header: 
+     * Auth token --  Users are going to use FE dashboard to create shorten url and they need to login on the dashboard before they can use this feature. At the time of login, BE gives the token to FE which will be passed in the api call.
+     * Rate limit -- 5 requests/min, scoped per authenticated user (tied to the login token, not global) — enforced at the `GW` layer so an abusive caller is rejected before reaching the ShortUrl Service. Exceeding it returns `429 Too Many Requests`.
+     * Malicious-URL screening -- synchronous check against a safe-browsing/URL-reputation API (e.g. Google Safe Browsing) at creation time, before the row is written; rejected with an error response if flagged. Acceptable to do synchronously since this only affects the write path (1,000/day), not the read-heavy path. Known limitation: this only screens the URL at creation time — a destination that's benign at creation but turns malicious later (TOCTOU) isn't caught; out of scope for v1, flagged here rather than silently ignored.
    * Request body: `{ "url": "www.test.com/....", "customAlias": "optional-string" }`
    * Response body: `{ "shortUrl": "" }`, or `409 Conflict` if `customAlias` is already taken
 2. `GET /{shortUrl}` — no `/urls` prefix. The redirect path IS the short code; a `/urls/` prefix wastes characters on the one URL that's supposed to be short.
-3. `PATCH /urls/{shortUrl}` with body `{ "isActive": false }` — renamed from DELETE, since this is a soft deactivation (flips `isActive`), not row removal. The row and its history stay queryable/recoverable.
+3. `PATCH /urls/{shortUrl}` with body `{ "isActive": false }` — renamed from DELETE, since this is a soft deactivation (flips `isActive`), not row removal. The row and its history stay queryable/recoverable. Authorization: the token's user id must match the link's `createdBy`, else `403 Forbidden` — only the creator can deactivate their own link.
 
 ## Short code generation
 
 ### Option 1: Hash generation
 
-* Problem: collision can happen
+* Approach: hash the long URL (e.g. MD5/SHA-256), truncate to 6 base62 characters for the short code.
+* Problem, quantified: the 62⁶ ≈ 56.8 billion space looks comfortably large next to ~3.65M codes over 10 years (Quantified Scale) — but truncated-hash collisions follow the birthday paradox, not a simple "codes ÷ space" ratio. Using the standard approximation P(collision) ≈ 1 − e^(−n²/2m):
+  * At n ≈ 280,000 codes generated (~1/13th of the 10-year total) — m = 62⁶ ≈ 5.68 × 10¹⁰ — collision probability is already ≈ 50%.
+  * At n ≈ 3.65M (the full 10-year volume), n²/2m ≈ 117 — collision probability is indistinguishable from 100%. A collision isn't a tail risk here, it's a near-certainty well before year 10.
+* Consequence: this option needs real collision-handling — detect via the DB unique constraint, then retry with a different hash input (e.g. re-hash with a salt/nonce) or fall back to a longer code. That's retry-loop complexity and an unbounded-in-the-worst-case write latency, which Option 2 avoids entirely by construction (a counter can't collide with itself).
 
 ### Option 2: Base62-encoded auto-increment counter (Chosen option)
 
@@ -56,9 +63,9 @@ Design Url shortener app
 
 ## Data model
 
-* `shortUrl` (PK, base62 code or custom alias), `longUrl`, `createdAt`, `updatedAt`, `isActive`
-* No `expiresAt` — matches the "never expires" assumption in Scope.
-* Owner/creator field deferred along with the open auth question above — add `creatorId` if/when auth is resolved, needed to authorize who can deactivate a given link.
+* `shortUrl` (PK, base62 code or custom alias), `longUrl`, `createdBy`, `updatedBy`, `createdAt`, `updatedAt`, `expiresAt`, `isActive`
+* `expiresAt` — matches the "url will have an expiry date" assumption in Scope (default 1 year from `createdAt` unless the user sets a custom value). Checked lazily at redirect time (an expired row is treated as inactive even if `isActive` is still true) rather than requiring a cron sweep — cheap to check on every read, and correctness doesn't depend on a background job running on schedule. An optional periodic cleanup job can flip `isActive` for expired rows for housekeeping, but isn't required for correctness.
+* `createdBy` / `updatedBy` populated from the auth token's user id — this is what the `PATCH` authorization check (API endpoints) compares against.
 
 ## Major components
 
@@ -131,13 +138,13 @@ For this system, the genuinely hard sub-problem isn't storage or CRUD — it's *
 
 | Decision | Alternative(s) rejected | Why (tied to requirements/cost) |
 |---|---|---|
-| Redirect: 301 permanent | 302 temporary | 302 preserves click analytics and instant deactivation propagation, but hits origin on every click. Rejected 302 because origin cost at ~8.64B raw clicks/day would be far higher; accepted losing analytics/instant-deactivation as the price (Functional Requirements) |
+| Redirect: 301 permanent | 302 temporary | 302 hits origin on every click (~8.64B/day). Illustrative compute cost at ~$0.20/million requests: 302 ≈ 8,640 × $0.20 ≈ $1,730/day (~$52K/month). 301 with ~90% edge absorption ≈ 864M/day origin hits ≈ $173/day (~$5K/month) — roughly a 10x difference. Rough numbers (provider/architecture-dependent), but the order of magnitude is what justifies accepting the lost analytics/instant-deactivation (Functional Requirements) |
 | Short code: base62 counter | ULID; hash-of-URL | ULID (26 chars) fails the "short" requirement outright. Hash risks collisions needing detection/retry logic. Counter is simplest and collision-free, and the "ties to MySQL" objection doesn't hold at 1,000 writes/day |
-| Datastore: MySQL | Pure key-value store (DynamoDB/Cassandra) | Access pattern (single-key lookup) is a natural KV fit, not relational — but custom alias needs a simple write-time uniqueness constraint, and write volume (1,000/day) never needs KV-style write scaling. MySQL costs less to operate here than standing up a second datastore for a benefit we don't need |
-| Cache: fully-warmed, write-through | Cache-aside with LRU eviction | Entire 10-year dataset is ~3.65 GB — cheap to hold in full. Paying a small, fixed memory cost buys away all miss-path/eviction complexity |
+| Datastore: MySQL | Pure key-value store (DynamoDB/Cassandra) | Checked the actual $ rather than assuming: at 1,000 writes/day (~30K/month), DynamoDB on-demand write cost (~$1.25/million writes) is under $1/month — cheaper in raw compute than a small always-on multi-AZ MySQL instance (~$100-300/month). So this is *not* actually a compute-cost win for MySQL; the real cost being avoided is operational — standing up, backing up, monitoring, and staffing on-call for a second distinct datastore technology when relational tooling is the default elsewhere. That's a real cost, just not a compute one — worth being precise about which cost actually drives the decision |
+| Cache: fully-warmed, write-through | Cache-aside with LRU eviction | Entire 10-year dataset is ~3.65 GB — a small Redis node holding it fully (~$50-100/month illustrative) is cheap next to the complexity avoided (no eviction policy, no miss-path logic) |
 | Consistency: single MySQL primary | Multi-primary / distributed-strong writes | Write volume is trivial (~0.01 QPS avg) — multi-primary complexity buys nothing here. Traded a theoretical SPOF for fast automatic failover (~30-60s), acceptable given the low blast radius |
-| Hot-key mitigation: dynamic L1 promotion | Static over-provisioning of Redis/Service capacity | Viral spikes are rare and bursty — paying for standing capacity to cover the worst case 24/7 is the more expensive option; dynamic promotion only pays the (invalidation-plumbing) cost when actually needed |
-| Region: single-region, multi-AZ | Multi-region | No stated requirement for a globally-distributed user base; multi-region adds cost/complexity (cross-region replication, geo-routing) that isn't justified yet — named as the lever if that requirement appears |
+| Hot-key mitigation: dynamic L1 promotion | Static over-provisioning of Redis/Service capacity | Permanently provisioning for 5x peak (extra Redis nodes running 24/7 for a spike that may not happen most days) is illustratively ~$600-800/month in standing infra. Dynamic L1 promotion uses already-provisioned Service-instance memory (~$0 marginal recurring cost) plus a one-time few-dev-days build for the pub/sub invalidation — a recurring monthly cost vs. a one-time engineering cost |
+| Region: single-region, multi-AZ | Multi-region | Multi-region roughly doubles-to-triples the DB/cache tier's standing infra cost (duplicate MySQL + Redis clusters per region) — illustratively ~$500-1,000/month single-region vs. ~$1,500-3,000/month across 3 regions, plus cross-region data-transfer fees (small here given trivial write volume). No stated requirement for a globally-distributed user base to justify that spend — named as the lever if that requirement appears |
 
 ## Operational Concerns
 
