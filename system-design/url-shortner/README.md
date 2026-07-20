@@ -74,6 +74,41 @@ Design Url shortener app
   * CDN/edge layer added: since redirects are 301 (permanent/cacheable), most repeat traffic from a given client resolves at the edge or in the browser and never reaches our infrastructure at all — this is the direct payoff of the 301 decision, and the main reason the real request volume hitting the service is far below the raw 8.64B/day click count.
   * Redis cache-aside: on deactivation (`PATCH`), explicitly invalidate/delete the Redis entry so the change takes effect promptly rather than waiting out a TTL — a TTL-only approach would let deactivated links keep resolving from cache for up to the TTL window.
 
+```mermaid
+flowchart TD
+    Client([Client])
+
+    subgraph Write["Write path — POST /urls, PATCH /urls/:shortUrl"]
+        GW["API Gateway<br/>(auth, rate limit 5/min, GW-level rejection)"]
+        Svc["ShortUrl Service<br/>(base62 counter / custom alias,<br/>malicious-URL screening,<br/>PATCH ownership check)"]
+        PrimaryDB[("MySQL Primary")]
+        FollowerDB[("MySQL Follower(s)")]
+        Invalidate["Redis invalidate/write-through<br/>+ Pub/Sub broadcast to Service instances"]
+
+        GW --> Svc
+        Svc -->|create / deactivate| PrimaryDB
+        PrimaryDB -.->|replication| FollowerDB
+        Svc --> Invalidate
+    end
+
+    subgraph Read["Read path — GET /:shortUrl"]
+        CDN["CDN / Edge cache<br/>(absorbs repeat clicks via 301)"]
+        Svc2["ShortUrl Service<br/>(checks expiresAt/isActive)"]
+        L1["In-process L1 cache<br/>(hottest keys only, above ~30K QPS)"]
+        Redis[("Redis<br/>fully-warmed, cache-aside")]
+
+        CDN -->|cache miss / first visit| Svc2
+        Svc2 --> L1
+        L1 -->|L1 miss| Redis
+        Redis -->|Redis miss, rare| FollowerDB
+    end
+
+    Client --> GW
+    Client --> CDN
+    Invalidate -.->|invalidates| Redis
+    Invalidate -.->|invalidates| L1
+```
+
 ### Why MySQL
 
 The access pattern itself (`shortUrl → longUrl`, single-key lookup, no joins) doesn't require relational structure — a key-value store would fit that alone. MySQL is chosen instead because:
