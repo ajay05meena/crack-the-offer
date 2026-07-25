@@ -8,7 +8,8 @@ Personal interview prep repo — sharpening skills across DSA, coding practice, 
 - `coding-practice/` — general coding exercises, katas, language practice (each substantial exercise is its own Gradle project, e.g. `coding-practice/rate-limiter/`)
 - `system-design/` — system design notes, diagrams, case studies
 - `design-patterns/` — reference notes per pattern/technique (e.g. `design-patterns/caching-strategy/`, `design-patterns/authentication-and-authorization/`)
-- `ai-skills/` — AI/ML concepts, LLM tooling, applied projects
+- `.claude/skills/` — Claude Code skills for this repo (interviewer reviews, commit guard) — see the Index below and [Claude Code skills](#claude-code-skills)
+- `ai-skills/` — reserved for AI/ML concepts, applied projects (currently empty; not to be confused with `.claude/skills/` above)
 
 ## Where to write things
 
@@ -55,9 +56,14 @@ Update this when you add a problem — it's the map of what's actually here.
 | caching-strategy | [write-through](design-patterns/caching-strategy/write-through.md) | stub |
 | authentication-and-authorization | [README](design-patterns/authentication-and-authorization/README.md) | stub |
 
-### AI skills (`ai-skills/`)
+### AI skills (`.claude/skills/`)
 
-_Empty — nothing added yet._
+| Skill | What it does |
+|---|---|
+| [dsa-interviewer](.claude/skills/dsa-interviewer/SKILL.md) | Reviews a Java DSA solution in `dsa/` |
+| [system-design-interviewer](.claude/skills/system-design-interviewer/SKILL.md) | Reviews a system design write-up in `system-design/` |
+| [principal-code-interviewer](.claude/skills/principal-code-interviewer/SKILL.md) | Reviews a larger Java implementation in `coding-practice/` |
+| [commit](.claude/skills/commit/SKILL.md) | Reviews and creates commits, guards against committing to `main`, keeps this Index in sync |
 
 ## Claude Code skills
 
