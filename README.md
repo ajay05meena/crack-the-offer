@@ -8,7 +8,7 @@ Personal interview prep repo — sharpening skills across DSA, coding practice, 
 - `coding-practice/` — general coding exercises, katas, language practice (each substantial exercise is its own Gradle project, e.g. `coding-practice/rate-limiter/`)
 - `system-design/` — system design notes, diagrams, case studies
 - `design-patterns/` — reference notes per pattern/technique (e.g. `design-patterns/caching-strategy/`, `design-patterns/authentication-and-authorization/`)
-- `.claude/skills/` — Claude Code skills for this repo (interviewer reviews, commit guard) — see the Index below and [Claude Code skills](#claude-code-skills)
+- `.claude/skills/` — Claude Code skills for this repo (interviewer reviews, commit guard) — see [`INDEX.md`](INDEX.md) and [Claude Code skills](#claude-code-skills)
 - `ai-skills/` — reserved for AI/ML concepts, applied projects (currently empty; not to be confused with `.claude/skills/` above)
 
 ## Where to write things
@@ -23,47 +23,7 @@ Work on a branch per problem, then ask Claude to review — see below.
 
 ## Index
 
-Update this when you add a problem — it's the map of what's actually here.
-
-### DSA (`dsa/app/src/main/java/com/ajay/dsa/`)
-
-| Topic | Problem |
-|---|---|
-| arrays | [TwoSum](dsa/app/src/main/java/com/ajay/dsa/arrays/TwoSum.java) |
-| strings | [ValidAnagram](dsa/app/src/main/java/com/ajay/dsa/strings/ValidAnagram.java) |
-
-### Coding practice (`coding-practice/`)
-
-| Exercise | What it is |
-|---|---|
-| [rate-limiter](coding-practice/rate-limiter/) | Fixed-window rate limiter |
-| [transaction-ledger](coding-practice/transaction-ledger/) | Account ledger with transaction recording/history |
-
-### System design (`system-design/`)
-
-| Problem | Doc |
-|---|---|
-| [url-shortner](system-design/url-shortner/README.md) | URL shortener design |
-
-### Design patterns (`design-patterns/`)
-
-| Category | Pattern | Status |
-|---|---|---|
-| caching-strategy | [cache-aside](design-patterns/caching-strategy/cache-aside.md) | stub |
-| caching-strategy | [read-through](design-patterns/caching-strategy/read-through.md) | stub |
-| caching-strategy | [write-around](design-patterns/caching-strategy/write-around.md) | stub |
-| caching-strategy | [write-behind](design-patterns/caching-strategy/write-behind.md) | stub |
-| caching-strategy | [write-through](design-patterns/caching-strategy/write-through.md) | stub |
-| authentication-and-authorization | [README](design-patterns/authentication-and-authorization/README.md) | stub |
-
-### AI skills (`.claude/skills/`)
-
-| Skill | What it does |
-|---|---|
-| [dsa-interviewer](.claude/skills/dsa-interviewer/SKILL.md) | Reviews a Java DSA solution in `dsa/` |
-| [system-design-interviewer](.claude/skills/system-design-interviewer/SKILL.md) | Reviews a system design write-up in `system-design/` |
-| [principal-code-interviewer](.claude/skills/principal-code-interviewer/SKILL.md) | Reviews a larger Java implementation in `coding-practice/` |
-| [commit](.claude/skills/commit/SKILL.md) | Reviews and creates commits, guards against committing to `main`, keeps this Index in sync |
+[`INDEX.md`](INDEX.md) is the maintained map of every problem, exercise, doc, and skill actually in this repo. Update it when you add something — the `commit` skill checks it against the diff.
 
 ## Claude Code skills
 
@@ -72,7 +32,7 @@ This repo defines custom Claude Code skills under `.claude/skills/` that act as 
 - **`dsa-interviewer`** — reviews a Java DSA solution in `dsa/`. Locates the solution/test added or changed on the current branch (via `git diff` against `main`), compiles and runs its tests, then reports correctness, edge-case coverage, code quality, and complexity.
 - **`system-design-interviewer`** — reviews a system design write-up in `system-design/` at a Staff/Principal bar. Locates the doc added or changed on the current branch, evaluates it against the standard rubric (scope, architecture, scale, reliability, tradeoffs), and calls out which specific things you did read as Staff-level vs Principal-level.
 - **`principal-code-interviewer`** — reviews a larger Java implementation (e.g. `coding-practice/` exercises) at a Staff/Principal bar. Locates the code added or changed on the current branch, compiles and runs its tests, then evaluates correctness (including concurrency safety where relevant), API design, testing rigor, and failure handling — plus which specific things read as Staff-level vs Principal-level. For DSA puzzles, prefer `dsa-interviewer` instead.
-- **`commit`** — reviews and creates a git commit for this repo. Refuses to commit directly on `main` (prompts you to branch instead), actually reads the staged/unstaged diff before staging anything, and updates the root README's `## Index` table in the same commit if the diff adds a problem/exercise/doc that isn't listed there yet.
+- **`commit`** — reviews and creates a git commit for this repo. Refuses to commit directly on `main` (prompts you to branch instead), actually reads the staged/unstaged diff before staging anything, and updates [`INDEX.md`](INDEX.md) in the same commit if the diff adds a problem/exercise/doc that isn't listed there yet.
 
 ### Triggering a skill
 
