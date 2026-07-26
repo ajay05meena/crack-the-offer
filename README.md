@@ -10,6 +10,7 @@ Personal interview prep repo — sharpening skills across DSA, coding practice, 
 - `design-patterns/` — reference notes per pattern/technique (e.g. `design-patterns/caching-strategy/`, `design-patterns/authentication-and-authorization/`)
 - `.claude/skills/` — Claude Code skills for this repo (interviewer reviews, commit guard) — see [`INDEX.md`](INDEX.md) and [Claude Code skills](#claude-code-skills)
 - `ai-skills/` — reserved for AI/ML concepts, applied projects (currently empty; not to be confused with `.claude/skills/` above)
+- `tooling/` — notes on dev tooling used in this repo (e.g. [`tooling/rtk.md`](tooling/rtk.md), [`tooling/headroom.md`](tooling/headroom.md), [`tooling/ponytail.md`](tooling/ponytail.md), [`tooling/graphify.md`](tooling/graphify.md))
 
 ## Where to write things
 
