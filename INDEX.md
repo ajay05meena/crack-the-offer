@@ -33,6 +33,15 @@ Map of what's actually in this repo. Update this when you add a problem, exercis
 | caching-strategy | [write-through](design-patterns/caching-strategy/write-through.md) | stub |
 | authentication-and-authorization | [README](design-patterns/authentication-and-authorization/README.md) | stub |
 
+## Tooling (`tooling/`)
+
+| Doc | What it is |
+|---|---|
+| [rtk](tooling/rtk.md) | RTK install/config/token-savings guide |
+| [headroom](tooling/headroom.md) | Headroom AI install/config/wrap guide |
+| [ponytail](tooling/ponytail.md) | Ponytail install/config/commands guide |
+| [graphify](tooling/graphify.md) | Graphify install/config/usage guide |
+
 ## AI skills (`.claude/skills/`)
 
 | Skill | What it does |
