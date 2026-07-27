@@ -10,41 +10,51 @@ public class EditDistanceCalculator {
      * @return The minimum edit distance
      */
     public int calculate(String wordOne, String wordTwo) {
+        // Guarantee O(min(wordOneLength, wordTwoLength)) space by ensuring wordTwo is always the shorter string
+        if (wordOne.length() < wordTwo.length()) {
+            String temp = wordOne;
+            wordOne = wordTwo;
+            wordTwo = temp;
+        }
+
         int wordOneLength = wordOne.length();
         int wordTwoLength = wordTwo.length();
 
-        int[][] dp = new int[wordOneLength + 1][wordTwoLength + 1];
+        // We only need one row of space!
+        int[] dp = new int[wordTwoLength + 1];
 
-        // 1. Initialize Base Cases (Empty string transformations)
-        for (int i = 0; i <= wordOneLength; i++) {
-            dp[i][0] = i; // Deleting all characters from wordOne
-        }
+        // 1. Initialize the base case (first row)
         for (int j = 0; j <= wordTwoLength; j++) {
-            dp[0][j] = j; // Inserting all characters to match wordTwo
+            dp[j] = j;
         }
 
-        // 2. Build the solution bottom-up
+        // 2. Build the solution using a rolling array
         for (int i = 1; i <= wordOneLength; i++) {
+            // prevDiag tracks the top-left diagonal value: dp[i-1][j-1]
+            int prevDiag = dp[0];
+
+            // The first column of the current row (deleting 'i' characters)
+            dp[0] = i;
+
             for (int j = 1; j <= wordTwoLength; j++) {
+                // Save the current cell before we overwrite it (becomes prevDiag for the next loop)
+                int temp = dp[j];
 
-                // Note: i and j are 1-indexed for the grid,
-                // so we use i-1 and j-1 to check the actual string characters
                 if (wordOne.charAt(i - 1) == wordTwo.charAt(j - 1)) {
-                    // Characters match. Take the diagonal value (no new cost).
-                    dp[i][j] = dp[i - 1][j - 1];
+                    dp[j] = prevDiag; // Characters match
                 } else {
-                    // Characters do not match. Take the minimum of the 3 operations + 1.
-                    int insert = dp[i][j - 1];
-                    int delete = dp[i - 1][j];
-                    int substitute = dp[i - 1][j - 1];
-
-                    dp[i][j] = 1 + Math.min(insert, Math.min(delete, substitute));
+                    // dp[j-1] is Left (Insert)
+                    // dp[j] is Top (Delete) before it gets overwritten
+                    // prevDiag is Top-Left (Substitute)
+                    dp[j] = 1 + Math.min(dp[j - 1], Math.min(dp[j], prevDiag));
                 }
+
+                // Update the diagonal tracker for the next iteration
+                prevDiag = temp;
             }
         }
 
-        // The bottom-right corner holds the answer for the full strings
-        return dp[wordOneLength][wordTwoLength];
+        return dp[wordTwoLength];
     }
 }
 
