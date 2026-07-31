@@ -1,5 +1,5 @@
 package com.ajay.ratelimiter;
 
 public interface RateLimiter {
-    boolean tryAcquire();
+    boolean tryAcquire(String userId);
 }
